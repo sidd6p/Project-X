@@ -1,0 +1,12 @@
+<header>
+    <nav class="navbar navbar-light" style="background-color: #e3f2fd">
+        <ul class="nav nav-pills">
+            <li class="nav-item"><a href="{{ url_for('home') }}" class="nav-link {% if sellerHomePage %}active{% endif %}">Files</a></li>
+            <li class="nav-item"><a href="{{ url_for('home') }}" class="nav-link {% if uploadProdPage %}active{% endif %}">Account</a></li>
+            <li class="nav-item"><a href="{{ url_for('login') }}" class="nav-link {% if uploadProdPage %}active{% endif %}">Login</a></li>
+            <li class="nav-item"><a href="{{ url_for('register') }}" class="nav-link {% if uploadProdPage %}active{% endif %}">Register</a></li>
+            <li class="nav-item"><a href="{{ url_for('home') }}" class="nav-link {% if uploadProdPage %}active{% endif %}">Logout</a></li>
+        </ul>
+    </nav>
+    <hr style="clear:both">
+</header>

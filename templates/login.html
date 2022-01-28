@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block content %}
+<form class="row g-3" method="POST">
+  <div class="col-md-4">
+    <label for="validationDefault01" class="form-label">Email ID</label>
+    <input type="email" name="email" class="form-control" id="validationDefault01" placeholder="youremail@gmail.com" required>
+  </div>
+  <div class="col-md-4">
+    <label for="validationDefault02" class="form-label">Password</label>
+    <input type="text" name="pswd" class="form-control" id="validationDefault02" placeholder="Your Password" required>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary" type="submit">Submit form</button>
+  </div>
+</form>
+{% endblock content %}
