@@ -9,11 +9,13 @@ import time
 from .routes import user, file
 from pathlib import Path
 
+
 models.Base.metadata.create_all(bind=engine)
+
 
 while True:
     try:
-        connection = psycopg2.connect(host="localhost", database="projectx-db", user="postgres", password="jbrEV2Grsd53", cursor_factory=RealDictCursor)
+        connection = psycopg2.connect(host="localhost", database="xxxxxxx", user="xxxxxx", password="xxxxxxx", cursor_factory=RealDictCursor)
         cursor = connection.cursor()
         connection.commit()
         break
@@ -31,9 +33,9 @@ app.include_router(file.routers)
 
 
 BASE_PATH = Path(__file__).resolve().parent
-
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory=str(BASE_PATH / "templates"))
+
 
 
 ################# HOME PAGE ##################################

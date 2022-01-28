@@ -1,7 +1,11 @@
-from fastapi import Request, Form, APIRouter
+from fastapi import Depends, Request, Form, APIRouter, Depends
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
+from pydantic import EmailStr
+from sqlalchemy.orm import Session
 from .. import utils
+from ..database import get_db
+from .. import models
+from .. import schemas
 
 
 routers = APIRouter(tags=["User"])
@@ -18,8 +22,8 @@ def login(request: Request):
 
 ################# LOGIN PAGE ##################################
 @routers.post("/login")
-async def login(email:str = Form(...), pswd:str = Form(...)):
-    return {email, pswd}
+async def login(email: EmailStr = Form(...), pswd: str = Form(...), db: Session = Depends(get_db)):
+    return "okok"
 
 
 
@@ -32,6 +36,9 @@ def register(request: Request):
 
 ################# REGISTER PAGE ##################################
 @routers.post("/register")
-async def logiregistern(email:str = Form(...), pswd:str = Form(...)):
-    return {email, pswd}
-
+async def registern(email: EmailStr = Form(...), pswd: str = Form(...), db: Session = Depends(get_db)):
+    user = models.User(**{"email" : email, "pswd" : pswd})
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
