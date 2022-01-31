@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="container">
+        <h3>{{file.file_name}}</h3><br>
+        {% for access in accesses %}
+        <div class="row">
+            <div class="col-sm col-md-auto">
+            <article class="media content-section">
+                <div class="media-body">
+                <div class="article-metadata">
+                    <a><h4 style="color: #2b2b2bd2;">{{ access }}</h4></a>
+                </div>
+                </div>
+            </article>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

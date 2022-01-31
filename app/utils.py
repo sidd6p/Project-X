@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import secrets
 from passlib.context import CryptContext
+from sqlalchemy import false
 from .import database, models, schemas
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -12,6 +13,7 @@ from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 import fastapi.security as security
 from fastapi.security.oauth2 import OAuth2PasswordBearer
+from .auth2 import OAuth2PasswordBearerWithCookie
 
 
 ######################## VARIABLES #####################################
@@ -19,10 +21,9 @@ from fastapi.security.oauth2 import OAuth2PasswordBearer
 SECRET_KEY = "fdsgdfFGDH3425asDAFgjg968liuQSAFgf47246HNFGJmkgkjfwewqfv4gfn56"
 ALGORITHM = "HS256"
 EXP_TIME_MIN = 20
-OAUTH2_SCHEMA = OAuth2PasswordBearer(tokenUrl="login")
+OAUTH2_SCHEMA = OAuth2PasswordBearerWithCookie(tokenUrl="login/token", auto_error=False)
 BASE_PATH = Path(__file__).resolve().parent
 PSWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2schema = security.OAuth2PasswordBearer(tokenUrl="login")
 
 
 
@@ -60,44 +61,32 @@ async def authenticate_user(email: EmailStr, pswd: str, db: Session):
     return user_db
 
 
-def get_current_user(token: str = Depends(OAUTH2_SCHEMA), db: Session = Depends(get_db)):
-    credential_exceptions = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials", headers={"WWW-Authenticate":"Bearer"})
-    token = verify_access_token(token, credential_exceptions)
-    user = db.query(models.User).filter(models.User.user_id == token.user_id).first()
-    return user.user_id    
+def get_current_user(token: str):
+    token_data = verify_access_token(token)
+    if not token_data:
+        return False 
+    return token_data.get("user_id")   
 
 
 
 ######################## TOKEN #########################################
 
-def verify_access_token(token: str, credential_exceptions):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("user_id")
-        if not user_id:
-            raise credential_exceptions
-        token_data = schemas.TokenData(user_id = user_id)
-    except JWTError:
-        raise credential_exceptions
-    return token_data
-
 def create_access_token(data: dict):
     to_encode = data.copy()
     expires_at = datetime.utcnow() + timedelta(minutes=EXP_TIME_MIN)
     to_encode.update({"exp": expires_at})
-    jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return token
 
-def verify_access_token(token: str, credential_exceptions):
+def verify_access_token(token: str):
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("user_id")
+        token_data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = token_data.get("user_id")
         if not user_id:
-            raise credential_exceptions
-        token_data = schemas.TokenData(user_id = user_id)
+            return False
     except JWTError:
-        raise credential_exceptions
+            return False
     return token_data
-
 
 
 
@@ -122,15 +111,30 @@ def save_file(file):
     _, file_ext = os.path.splitext(file.filename)
     file_name = random_hex + file_ext
     file_path = os.path.join(BASE_PATH, 'static\\files', file_name)
-    print(file_path)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return str(file_name)
 
 def has_access(file_path: str, user_id: int, db: Session):
-    file = db.query(models.Access).filter(models.File.file_path == file_path).first()
+    file = db.query(models.File).filter(models.File.file_path == file_path).first()
+    if not file:
+        return False
     acces = db.query(models.Access).filter(models.Access.user_id == user_id).filter(models.Access.file_id == file.file_id).first()
     if acces:
         return True
     else:
         return False
+
+def get_file(owner_id: int, file_id: int,  db: Session):
+    file = db.query(models.File).filter(models.File.file_id == file_id).filter(models.File.owner_id == owner_id).first()
+    print("FOEFSD")
+    return file.file_id
+
+def get_all_access(file_id: int, db: Session):
+    user_ids = db.query(models.Access).filter(models.Access.file_id == file_id).all()
+    user_emails = []
+    for user_id in user_ids:
+        user = db.query(models.User).filter(models.User.user_id == user_id).first()
+        print("okokokokok")
+        # user_emails.append(user.email)
+    return user_emails
