@@ -61,7 +61,6 @@ async def show_my_file(request: Request, db: Session = Depends(utils.get_db), to
 @routers.get("/static/files/{file_path}")
 async def view_file(file_path:str, db: Session = Depends(utils.get_db), token:str = Depends(utils.OAUTH2_SCHEMA)):
     user_id = utils.get_current_user(token)
-    print(user_id)
     if utils.has_access(file_path, user_id, db):
         return FileResponse(path="app\\static\\files\\" + file_path)
     else:
@@ -74,8 +73,8 @@ async def view_file(file_path:str, db: Session = Depends(utils.get_db), token:st
 async def access_my_file(request: Request, file_id:int, db: Session = Depends(utils.get_db), token:str = Depends(utils.OAUTH2_SCHEMA)):
     user_id = utils.get_current_user(token)
     file = utils.get_file(user_id, file_id, db)
-    accesses = utils.get_all_access(file_id, db)
     if not file:
         return "NOT ALLOWED"
     else:
+        accesses = utils.get_all_access(file_id=file_id, db=db)
         return templates.TemplateResponse("file.html", {"request": request, "file": file, "accesses": accesses})

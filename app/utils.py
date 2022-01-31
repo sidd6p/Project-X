@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import secrets
 from passlib.context import CryptContext
-from sqlalchemy import false
+from sqlalchemy import false, null
 from .import database, models, schemas
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -127,14 +127,13 @@ def has_access(file_path: str, user_id: int, db: Session):
 
 def get_file(owner_id: int, file_id: int,  db: Session):
     file = db.query(models.File).filter(models.File.file_id == file_id).filter(models.File.owner_id == owner_id).first()
-    print("FOEFSD")
-    return file.file_id
+    if not file:
+        return null
+    return file
 
 def get_all_access(file_id: int, db: Session):
-    user_ids = db.query(models.Access).filter(models.Access.file_id == file_id).all()
+    users = db.query(models.Access.user_id).filter(models.Access.file_id == file_id).all()
     user_emails = []
-    for user_id in user_ids:
-        user = db.query(models.User).filter(models.User.user_id == user_id).first()
-        print("okokokokok")
-        # user_emails.append(user.email)
+    for user in users:
+        user_emails.append(db.query(models.User.email).filter(models.User.user_id == user[0]).first())
     return user_emails

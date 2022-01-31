@@ -1,3 +1,6 @@
+#static files
+static/files/
+
 #databases
 *db
 
