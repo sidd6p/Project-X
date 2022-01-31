@@ -1,14 +1,37 @@
 from pydantic import BaseModel, EmailStr
-from fastapi import Form
+from typing import List
 
-class User(BaseModel):
+
+##################### USER ###########################
+
+class UserBase(BaseModel):
+    email: EmailStr
+
+class UserCreate(BaseModel):
     email: EmailStr
     pswd: str
-    def __init__(self, email: EmailStr = Form(...), pswd: str = Form(...)):
-       super().__init__(email, pswd)
 
-class File(BaseModel):
-    file_name: str
+class UserSend(UserBase):
+    is_active: bool
+    
     class Config:
         orm_mode = True
-        
+
+class User(UserBase):
+    user_id: int
+    
+    class Config:
+        orm_mode = True
+
+
+
+##################### FILE ###########################
+
+class FileBase(BaseModel):
+    file_name: str
+    file_path: str
+
+class FileCreate(FileBase):
+    owner_id: int
+    user_id: List[int]
+    

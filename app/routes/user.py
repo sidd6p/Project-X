@@ -1,12 +1,9 @@
-from fastapi import Depends, Request, Form, APIRouter, Depends
+from fastapi import Depends, Request, Form, APIRouter, Depends, HTTPException, status
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
-from .. import utils
-from ..database import get_db
-from .. import models
-from .. import schemas
-
+from ..import utils, schemas
+from ..utils import get_db
 
 routers = APIRouter(tags=["User"])
 
@@ -22,8 +19,12 @@ def login(request: Request):
 
 ################# LOGIN PAGE ##################################
 @routers.post("/login")
-async def login(email: EmailStr = Form(...), pswd: str = Form(...), db: Session = Depends(get_db)):
-    return "okok"
+async def login(request: Request, email: EmailStr = Form(...), pswd: str = Form(...),  db: Session = Depends(get_db)):
+    user = await utils.authenticate_user(email=email, pswd=pswd, db=db)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials")
+    utils.create_access_token(data = {"user_id": user.user_id})
+    return templates.TemplateResponse("home.html", {"request": request})
 
 
 
@@ -35,10 +36,7 @@ def register(request: Request):
 
 
 ################# REGISTER PAGE ##################################
-@routers.post("/register")
-async def registern(email: EmailStr = Form(...), pswd: str = Form(...), db: Session = Depends(get_db)):
-    user = models.User(**{"email" : email, "pswd" : pswd})
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+@routers.post("/register", response_model=schemas.UserSend)
+async def register(request: Request, email: EmailStr = Form(...), pswd: str = Form(...), db: Session = Depends(get_db)):
+    await utils.create_user(email=email, pswd=pswd, db=db)
+    return templates.TemplateResponse("home.html", {"request": request})

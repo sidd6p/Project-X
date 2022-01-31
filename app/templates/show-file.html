@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block content %}
+    {% for file_detail in file_details %}
+        <div>
+            <div>
+                File name is: <a href="{{ request.url_for('access_my_file', file_path=file_detail.file_path) }}">{{ file_detail.file_name }}</a>
+            </div>
+            <div>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock content %}
