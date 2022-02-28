@@ -3,7 +3,7 @@ from typing import List
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from .. import models, utils
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 routers = APIRouter(tags=["File"])
 
@@ -48,7 +48,8 @@ async def upload_file(request: Request, files: List[UploadFile] = File(...), db:
 async def show_my_file(request: Request, db: Session = Depends(utils.get_db), token: str = Depends(utils.OAUTH2_SCHEMA)):
     user_id = utils.get_current_user(token)
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate User Try Login or check you Credentials", )
+        return RedirectResponse("http://127.0.0.1:8000/login")
+        # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate User Try Login or check you Credentials", )
     files = db.query(models.File).filter(models.File.owner_id == user_id).all()
     file_details = []
     for file in files:

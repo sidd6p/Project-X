@@ -4,15 +4,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import secrets
 from passlib.context import CryptContext
-from sqlalchemy import false, null
+from sqlalchemy import null
 from .import database, models, schemas
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from pydantic import EmailStr
-from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
-import fastapi.security as security
-from fastapi.security.oauth2 import OAuth2PasswordBearer
+from jose import jwt
+from fastapi import HTTPException, status
 from .auth2 import OAuth2PasswordBearerWithCookie
 
 
@@ -84,7 +82,7 @@ def verify_access_token(token: str):
         user_id: str = token_data.get("user_id")
         if not user_id:
             return False
-    except JWTError:
+    except:
             return False
     return token_data
 
