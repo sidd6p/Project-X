@@ -65,6 +65,9 @@ build the project
   uvicorn app.main:app 
 ```
 
+## Document
+> After running on localhost, go to the following page
+```http://<localhost>:<port>/docs#/```
 
 ## Feature
 
