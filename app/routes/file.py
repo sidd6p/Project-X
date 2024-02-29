@@ -1,81 +1,108 @@
-from fastapi import Request, APIRouter, UploadFile, File, Depends, HTTPException, status
-from typing import List
-from fastapi.templating import Jinja2Templates
+from typing import List, Optional
+from fastapi import status, HTTPException, Depends, Response, APIRouter
 from sqlalchemy.orm import Session
-from .. import models, utils
-from fastapi.responses import FileResponse, RedirectResponse
-
-routers = APIRouter(tags=["File"])
+from .. import schemas, models, database, oauth2
 
 
-templates = Jinja2Templates(directory=str(utils.BASE_PATH/"templates"))
+router = APIRouter(prefix="/files", tags=["Posts"])
 
 
+@router.get(
+    "/", status_code=status.HTTP_200_OK, response_model=List[schemas.PostResponseBase]
+)
+async def get_files(
+    db: Session = Depends(database.get_db),
+    limit: int = 10,
+    offset: int = 0,
+    search: Optional[str] = "",
+):
+    files = (
+        db.query(models.Post)
+        .filter(models.Post.title.contains(search))
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+    return files
 
 
-################# UPLOAD FILES  ##################################
-@routers.get("/uploadfiles")
-def upload_file(request: Request):
-    return templates.TemplateResponse("upload-file.html", {"request": request, "uploadFilePage": True})
+@router.file(
+    "/", status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponseBase
+)
+async def set_file(
+    file: schemas.PostCreate,
+    db: Session = Depends(database.get_db),
+    user_id: int = Depends(oauth2.get_current_user),
+):
+    new_file = models.Post(**file.model_dump())
+    new_file.owner_id = user_id
+    db.add(new_file)
+    db.commit()
+    db.refresh(new_file)
+    return new_file
 
 
+@router.get(
+    "/{id}", status_code=status.HTTP_200_OK, response_model=schemas.PostResponseBase
+)
+async def get_file(id: int, db: Session = Depends(database.get_db)):
+    file = db.query(models.Post).filter(models.Post.id == id).first()
 
-
-################# UPLOAD FILES  ##################################
-@routers.post("/uploadfiles")
-async def upload_file(request: Request, files: List[UploadFile] = File(...), db: Session = Depends(utils.get_db), token:str = Depends(utils.OAUTH2_SCHEMA)):
-    user_id = utils.get_current_user(token)
-    if not user_id:
-        return templates.TemplateResponse("login.html", {"request": request, "loginPage":True})
-    return_names = []
-    for file in files:
-        return_names.append({"file_name" :file.filename})
-        file_path = utils.save_file(file)
-        file = models.File(**{"file_path": file_path, "owner_id":user_id, "file_name": str(file.filename)})
-        db.add(file)
-        db.commit()
-        db.refresh(file)
-        access = models.Access(**{"file_id": int(file.file_id), "user_id": user_id})
-        db.add(access)
-        db.commit()
-    return templates.TemplateResponse("upload-file.html", {"request": request})
-
-
-
-
-################# SHOW FILES  ##################################
-@routers.get("/showfile/")
-async def show_my_file(request: Request, db: Session = Depends(utils.get_db), token: str = Depends(utils.OAUTH2_SCHEMA)):
-    user_id = utils.get_current_user(token)
-    if not user_id:
-        return RedirectResponse("http://127.0.0.1:8000/login")
-        # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate User Try Login or check you Credentials", )
-    files = db.query(models.File).filter(models.File.owner_id == user_id).all()
-    file_details = []
-    for file in files:
-        file_details.append({"file_name": file.file_name, "file_id": file.file_id})
-    print(file_details)
-    return templates.TemplateResponse("show-file.html", {"request": request, "file_details": file_details})
-
-
-################# ACCESS FILES  ##################################
-@routers.get("/static/files/{file_path}")
-async def view_file(file_path:str, db: Session = Depends(utils.get_db), token:str = Depends(utils.OAUTH2_SCHEMA)):
-    user_id = utils.get_current_user(token)
-    if utils.has_access(file_path, user_id, db):
-        return FileResponse(path="app\\static\\files\\" + file_path)
+    if file is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post with id: {id} not found!",
+        )
     else:
-        return "NOT ALLOWED"
+        return file
 
 
+@router.put(
+    "/{id}", status_code=status.HTTP_200_OK, response_model=schemas.PostResponseBase
+)
+async def update_file(
+    id: int,
+    updated_file: schemas.PostUpdate,
+    db: Session = Depends(database.get_db),
+    user_id: int = Depends(oauth2.get_current_user),
+):
+    file = db.query(models.Post).filter(models.Post.id == id)
 
-################# UPDATE FILES  ##################################
-@routers.get("/files/{file_id}")
-async def access_my_file(request: Request, file_id:int, db: Session = Depends(utils.get_db), token:str = Depends(utils.OAUTH2_SCHEMA)):
-    user_id = utils.get_current_user(token)
-    file = utils.get_file(user_id, file_id, db)
-    if not file:
-        return "NOT ALLOWED"
+    if file.first() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post with id: {id} not found!",
+        )
+    elif user_id != file.first().owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You can update only your files",
+        )
     else:
-        accesses = utils.get_all_access(file_id=file_id, db=db)
-        return templates.TemplateResponse("file.html", {"request": request, "file": file, "accesses": accesses})
+        file.update(updated_file.model_dump(), synchronize_session=False)
+        db.commit()
+        return file.first()
+
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_file(
+    id: int,
+    db: Session = Depends(database.get_db),
+    user_id: int = Depends(oauth2.get_current_user),
+):
+    file = db.query(models.Post).filter(models.Post.id == id)
+
+    if file.first() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post with id: {id} not found!",
+        )
+    elif user_id != file.first().owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You can delete only your files",
+        )
+    else:
+        file.delete(synchronize_session=False)
+        db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

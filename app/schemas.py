@@ -1,37 +1,56 @@
 from pydantic import BaseModel, EmailStr
-from typing import List
+from datetime import datetime
+from typing import Optional
+from pydantic.types import conint
 
-
-##################### USER ###########################
-
-class UserBase(BaseModel):
-    email: EmailStr
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    pswd: str
-
-class UserSend(UserBase):
-    is_active: bool
-    
-    class Config:
-        orm_mode = True
-
-class User(UserBase):
-    user_id: int
-    
-    class Config:
-        orm_mode = True
-
-
-
-##################### FILE ###########################
 
 class FileBase(BaseModel):
     file_name: str
     file_path: str
 
+
 class FileCreate(FileBase):
+    pass
+
+
+class FileUpdate(FileBase):
+    pass
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+
+
+class FileResponseBase(FileBase):
+    created_at: datetime
     owner_id: int
-    user_id: List[int]
-    
+    id: int
+    owner: UserBase
+
+
+class FileAccessResponse(FileResponseBase):
+    file: FileResponseBase
+    access: int
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class UserResponse(UserBase):
+    created_at: datetime
+    id: int
+
+
+class AccessTokenBase(BaseModel):
+    access_token: str
+    type: str
+
+
+class TokenDataBase(BaseModel):
+    id: Optional[int] = None
+
+
+class AccessBase(BaseModel):
+    file_id: int
+    add_access: conint(le=1)  # type: ignore
